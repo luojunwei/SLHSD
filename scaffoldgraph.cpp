@@ -91,22 +91,164 @@ LocalScaffoldSetHead* mixShortAndLong(ContigSetHead* contigSetHead,  SimpleLongR
 
 }
 
+void BuildGraphWithSmallIS(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, LocalScaffoldSetHead* localScaffoldSetHead, char* file) {
+	cout << "readType=1" << endl;
+	long int lineCount = 0;
+	FILE* fp;
+	if ((fp = fopen(file, "r")) == NULL) {
+		printf("%s, does not exist!", file);
+		exit(0);
+	}
+	char* p;
+	const char* split = ",";
+	int maxSize = 50000;
+	char* line = new char[maxSize];
 
-ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize) {
-	
-	LocalScaffoldSetHead* localScaffoldSetHead = NULL;
-	long int shortLen = 0;
-	long int longLen = 0;
-	if (insertSize > 1000) {
-		shortLen = aligningResultHead->aligningResultCount;
-		longLen = simpleResultHead->simpleLongLineCount;
-		localScaffoldSetHead = mixShortAndLong(contigSetHead, simpleResultHead->simpleLongResult, aligningResultHead->aligningResult, shortLen, longLen);
+	cout << "gggg" << endl;
+	int readIndex = 0;
+	lineCount = 0;
+	while ((fgets(line, maxSize, fp)) != NULL) {
+		p = strtok(line, split);
+		int count = atoi(p);
+		if (count <= 1) {	
+			continue;
+		}
+		p = strtok(NULL, split);
+		int startContigIndex = atoi(p);
+		p = strtok(NULL, split);
+		int startPosition = atoi(p);
+		p = strtok(NULL, split);
+		int distance = atoi(p);
+		p = strtok(NULL, split);
+		bool startOrientation = atoi(p);
+		p = strtok(NULL, split);
+		int startOverlapLength = atoi(p);
+
+		int a = 2;
+		while (a <= count) {
+			p = strtok(NULL, split);
+			int endContigIndex = atoi(p);
+			p = strtok(NULL, split);
+			int endPosition = atoi(p);
+			p = strtok(NULL, split);
+			int distance1 = atoi(p);
+			p = strtok(NULL, split);
+			bool endOrientation = atoi(p);
+			p = strtok(NULL, split);
+			int endOverlapLength = atoi(p);
+
+			if (startContigIndex != -1) {
+				if (endContigIndex == -1) {
+					distance = distance + distance1 + contigSetHead->contigSet[endContigIndex].contigLength;
+				}
+				else {
+					int min = 0;
+					if (startOverlapLength > endOverlapLength) {
+						min = endOverlapLength;
+					}
+					else {
+						min = startOverlapLength;
+					}
+					InsertOutOrInEdge(scaffoldGraphHead, readIndex, startContigIndex, startOrientation, endContigIndex, endOrientation, distance, min);
+					
+					distance = distance1;
+					startContigIndex = endContigIndex;
+					startOrientation = endOrientation;
+					startOverlapLength = endOverlapLength;
+					startPosition = endPosition;
+				}
+			}
+			else {
+				distance = distance1;
+				startContigIndex = endContigIndex;
+				startOrientation = endOrientation;
+				startOverlapLength = endOverlapLength;
+				startPosition = endPosition;
+			}
+			a++;
+		}
+		readIndex++;
+	}
+	fclose(fp);
+
+
+}
+
+void InsertOutOrInEdge(ScaffoldGraphHead* scaffoldGraphHead, int readIndex, int leftNodeIndex, bool leftOrientation, int rightNodeIndex, bool rightOrientation, int gapDistance, int overlapLength) {
+
+	ScaffoldGraphEdge* leftNode = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
+	leftNode->index = leftNodeIndex;
+	leftNode->nodeIndex = rightNodeIndex;
+	leftNode->gapDistance = gapDistance;
+	leftNode->overlapLength = overlapLength;
+	leftNode->allReadCount = 0;
+	leftNode->shortReadCount = 0;
+	leftNode->longReadCount = 0;
+	leftNode->weight = overlapLength; 
+	leftNode->next = NULL;
+
+	ScaffoldGraphEdge* rightNode = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
+	rightNode->index = rightNodeIndex;
+	rightNode->nodeIndex = leftNodeIndex;
+	rightNode->gapDistance = gapDistance;
+	rightNode->overlapLength = overlapLength;
+	rightNode->allReadCount = 0;
+	rightNode->shortReadCount = 0;
+	rightNode->longReadCount = 0;
+	rightNode->weight = overlapLength; 
+	rightNode->next = NULL;
+
+
+	if (leftOrientation != rightOrientation) {
+		leftNode->orientation = 0;
+		rightNode->orientation = 0;
 	}
 	else {
-		shortLen = 0;
-		longLen = simpleResultHead->simpleLongLineCount;
-		localScaffoldSetHead = mixShortAndLong(contigSetHead, simpleResultHead->simpleLongResult, aligningResultHead->aligningResult, shortLen, longLen);
+		leftNode->orientation = 1;
+		rightNode->orientation = 1;
 	}
+
+	if (leftOrientation == true) {
+		if (scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge != NULL) {
+			leftNode->next = scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge;
+		}
+		scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge = leftNode;
+	}
+	else {
+		if (scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge != NULL) {
+			leftNode->next = scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge;
+		}
+		scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge = leftNode;
+	}
+
+	if (rightOrientation == true) {
+		if (scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge != NULL) {
+			rightNode->next = scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge;
+		}
+		scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge = rightNode;
+	}
+	else {
+		if (scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge != NULL) {
+			rightNode->next = scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge;
+		}
+		scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge = rightNode;
+	}
+
+}
+
+
+
+ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, LocalScaffoldSetHead* localScaffoldSetHead) {
+	cout << "readType=2" << endl;
+
+	localScaffoldSetHead = NULL;
+	long int shortLen = 0;
+	long int longLen = 0;
+	
+	shortLen = aligningResultHead->aligningResultCount;
+	longLen = simpleResultHead->simpleLongLineCount;
+	localScaffoldSetHead = mixShortAndLong(contigSetHead, simpleResultHead->simpleLongResult, aligningResultHead->aligningResult, shortLen, longLen);
+
 	long int i = 0;
 
 	long int leftContigIndex = -1;
@@ -162,7 +304,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 					gapDistance = gapDistance + localScaffoldSetHead->localScaffoldSet[m].localGapDistance;
 					if (overlap < localScaffoldSetHead->localScaffoldSet[m].localOverlap) {
 						overlap = localScaffoldSetHead->localScaffoldSet[m].localOverlap;
-					} 
+					}
 
 					if (localScaffoldSetHead->localScaffoldSet[m].localScaffoldFlag == 1) {
 						shortCount++;
@@ -203,6 +345,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 
 						}
 						if (localScaffoldSetHead->localScaffoldSet[m].leftOritation == 0 && localScaffoldSetHead->localScaffoldSet[m].rightOritation == 0) {
+
 							lo[2]++;
 							ld[2] = ld[2] + localScaffoldSetHead->localScaffoldSet[m].localGapDistance;
 							if (localScaffoldSetHead->localScaffoldSet[m].localOverlap > lp[2]) {
@@ -210,6 +353,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 							}
 						}
 						if (localScaffoldSetHead->localScaffoldSet[m].leftOritation == 1 && localScaffoldSetHead->localScaffoldSet[m].rightOritation == 1) {
+
 							lo[1]++;
 							ld[1] = ld[1] + localScaffoldSetHead->localScaffoldSet[m].localGapDistance;
 							if (localScaffoldSetHead->localScaffoldSet[m].localOverlap > lp[1]) {
@@ -232,6 +376,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 									lp[3] = localScaffoldSetHead->localScaffoldSet[m].localOverlap;
 								}
 							}
+
 						}
 					}
 					else if (localScaffoldSetHead->localScaffoldSet[m].localScaffoldFlag == 2 && readType == 1) {
@@ -298,7 +443,8 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 					}
 				}
 				gapDistance = gapDistance / (double)(end - start + 1);
-				
+
+
 				max = 0;
 				maxIndex = -1;
 				second = 0;
@@ -332,10 +478,10 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 					}
 				}
 				weight = 0;
-								
+
 				if (shortCount >= 10 && longCount >= 1) {
 
-					if (second == 0 && second0 == 0) {	
+					if (second == 0 && second0 == 0) {
 						if (maxIndex == maxIndex0) {
 							index = maxIndex0;
 							gapDistance = (sd[maxIndex] + ld[maxIndex0]) / 2;
@@ -355,7 +501,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 								weight = GetEdgeWeight(contigSetHead, leftContigIndex, rightContigIndex, index, -1, shortCount, longCount, readMapPosition, gapDistance, readType, insertSize);
 							}
 						}
-						
+
 					}
 					else {
 						if (max0 == second0) {
@@ -381,10 +527,11 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 						gapDistance = (sd[index] + ld[index]) / 2;
 						weight = GetEdgeWeight(contigSetHead, leftContigIndex, rightContigIndex, maxIndex, index, shortCount, longCount, readMapPosition, gapDistance, readType, insertSize);
 					}
-					InsertEdge(scaffoldGraphHead, contigSetHead ,index, leftContigIndex, rightContigIndex, gapDistance, overlap, shortCount, longCount, readMapPosition, weight);
+
+					InsertEdge(scaffoldGraphHead, contigSetHead, index, leftContigIndex, rightContigIndex, gapDistance, overlap, shortCount, longCount, readMapPosition, weight);
 				}
 
-				if (shortCount >= 30 && longCount == 0) {
+				if (shortCount >= 20 && longCount == 0) {
 					if (max == second) {
 						bool a = abs(sd[maxIndex]) < abs(sd[secondIndex]) ? true : false;
 						if (a == true) {
@@ -426,7 +573,7 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 					weight = GetEdgeWeight(contigSetHead, leftContigIndex, rightContigIndex, -1, index, shortCount, longCount, readMapPosition, ld[index], readType, insertSize);
 					InsertEdge(scaffoldGraphHead, contigSetHead, index, leftContigIndex, rightContigIndex, gapDistance, overlap, shortCount, longCount, readMapPosition, weight);
 				}
-				
+
 			}
 			start = i;
 			end = i;
@@ -445,8 +592,6 @@ ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffo
 			weight = 0;
 		}
 	}
-	
-
 
 	return scaffoldGraphHead;
 }
@@ -539,7 +684,6 @@ void InsertEdge(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHe
 
 double GetEdgeWeight(ContigSetHead* contigSetHead, long int leftNodeIndex, long int rightNodeIndex, int shortOriIndex, int longOriIndex, int shortCount, int longCount, ReadMapPosition* readMapPosition, long int gapDistance, int readType, int insertSize) {
 	int tempLength = 0;
-
 	double shortCov = 0;
 	double longCov = 0;
 	long int* leftCount = new long int[4];
@@ -636,7 +780,6 @@ double GetEdgeWeight(ContigSetHead* contigSetHead, long int leftNodeIndex, long 
 	else {
 		shortCov = 0;
 	}
-
 
 
 	if (longOriIndex != -1 && readType == 1) {
@@ -744,81 +887,6 @@ ScaffoldGraphEdge* MergeMultipleEdges(ScaffoldGraphEdge* edge, int contigLength,
 	}
 	if (forwardCount1 > 0) {
 		forwardGapDistance1 = forwardGapDistance1 / forwardCount1;
-
-	}
-	if (reverseCount1 > 0) {
-		reverseGapDistance1 = reverseGapDistance1 / reverseCount1;
-	}
-
-
-	if (forwardCount1 > 0) {
-		ScaffoldGraphEdge* result1 = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
-		result1->index = edge->index;
-		result1->nodeIndex = edge->nodeIndex;
-		result1->gapDistance = forwardGapDistance1;
-		result1->allReadCount = forwardShortCount + forwardLongCount;
-		result1->shortReadCount = forwardShortCount;
-		result1->longReadCount = forwardLongCount;
-		result1->orientation = true;
-		result1->weight = forwardWeight;
-		result1->next = NULL;
-		result = result1;
-	}
-
-	if (reverseCount1 > 0) {
-		ScaffoldGraphEdge* result1 = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
-		result1->index = edge->index;
-		result1->nodeIndex = edge->nodeIndex;
-		result1->gapDistance = reverseGapDistance1;
-		result1->allReadCount = reverseShortCount + reverseLongCount;
-		result1->shortReadCount = reverseShortCount;
-		result1->longReadCount = reverseLongCount;
-		result1->orientation = false;
-		result1->weight = reverseWeight;
-		result1->next = NULL;
-		result = result1;
-	}
-	DeleteMergeEdge(edge);
-	return result;
-}
-
-
-ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int contigLength0) {
-
-	int forwardCount1 = 0;
-	double forwardGapDistance1 = 0;
-	int forwardOverlapLength = 0;
-
-	int reverseCount1 = 0;
-	double reverseGapDistance1 = 0;
-	int reverseOverlapLength = 0;
-
-	ScaffoldGraphEdge* result = NULL;
-	ScaffoldGraphEdge* tempEdge = edge;
-
-	bool orientation = tempEdge->orientation;
-	bool previous;
-
-	while (tempEdge != NULL) {
-		if (tempEdge->orientation == 1) {
-			forwardCount1++;
-			forwardGapDistance1 = forwardGapDistance1 + tempEdge->gapDistance;
-			if (tempEdge->overlapLength > forwardOverlapLength) {
-				forwardOverlapLength = tempEdge->overlapLength;
-			}
-		}
-		else {
-			reverseCount1++;
-			reverseGapDistance1 = reverseGapDistance1 + tempEdge->gapDistance;
-			if (tempEdge->overlapLength > reverseOverlapLength) {
-				reverseOverlapLength = tempEdge->overlapLength;
-			}
-		}
-		tempEdge = tempEdge->next;
-	}
-	if (forwardCount1 > 0) {
-		forwardGapDistance1 = forwardGapDistance1 / forwardCount1;
-
 	}
 	if (reverseCount1 > 0) {
 		reverseGapDistance1 = reverseGapDistance1 / reverseCount1;
@@ -831,8 +899,8 @@ ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int con
 		result1->nodeIndex = edge->nodeIndex;
 		result1->gapDistance = forwardGapDistance1;
 		result1->allReadCount = forwardCount1;
-		result1->shortReadCount = 0;
-		result1->longReadCount = forwardCount1;
+		result1->shortReadCount = forwardShortCount;
+		result1->longReadCount = forwardLongCount;
 		result1->orientation = true;
 		result1->weight = forwardOverlapLength;
 		result1->next = NULL;
@@ -846,8 +914,8 @@ ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int con
 		result1->nodeIndex = edge->nodeIndex;
 		result1->gapDistance = reverseGapDistance1;
 		result1->allReadCount = reverseCount1;
-		result1->shortReadCount = 0;
-		result1->longReadCount = reverseCount1;
+		result1->shortReadCount = reverseShortCount;
+		result1->longReadCount = reverseLongCount;
 		result1->orientation = false;
 		result1->weight = reverseOverlapLength;
 		result1->next = NULL;
@@ -857,7 +925,6 @@ ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int con
 	DeleteMergeEdge(edge);
 	return result;
 }
-
 
 
 ScaffoldGraphEdge* OptimizeEdgeInScaffoldGraph(ScaffoldGraphEdge* edge, ContigSetHead* contigSetHead, int nodeIndex) {
@@ -918,6 +985,126 @@ ScaffoldGraphEdge* OptimizeEdgeInScaffoldGraph(ScaffoldGraphEdge* edge, ContigSe
 		}
 
 	}
+	return result;
+}
+
+
+int CountAverageReadCount(ScaffoldGraphHead* scaffoldGraphHead) {
+	ScaffoldGraphEdge* tempEdge = NULL;
+	ScaffoldGraphEdge* tempEdge1 = NULL;
+	int averageShortCount = 0;
+	int averageLongCount = 0;
+	int averageCount = 0;
+	int edgeCount = 0;
+
+	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
+
+		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
+			tempEdge = scaffoldGraphHead->scaffoldGraph[i].outEdge;
+			while (tempEdge != NULL) {
+				averageShortCount = tempEdge->shortReadCount + averageShortCount;
+				averageLongCount = tempEdge->longReadCount + averageLongCount;
+				averageCount = tempEdge->allReadCount + averageCount;
+				edgeCount++;
+				tempEdge = tempEdge->next;
+			}
+		}
+		if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
+			tempEdge = scaffoldGraphHead->scaffoldGraph[i].inEdge;
+			while (tempEdge != NULL) {
+				averageShortCount = tempEdge->shortReadCount + averageShortCount;
+				averageLongCount = tempEdge->longReadCount + averageLongCount;
+				averageCount = tempEdge->allReadCount + averageCount;
+				edgeCount++;
+				tempEdge = tempEdge->next;
+			}
+		}
+	}
+	return averageCount / edgeCount;
+}
+
+ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int contigLength0) {
+
+	int forwardCount1 = 0;
+	double forwardGapDistance1 = 0;
+	int forwardOverlapLength = 0;
+	int forwardShortCount = 0;
+	int forwardLongCount = 0;
+	double forwardWeight = 0;
+
+	int reverseCount1 = 0;
+	double reverseGapDistance1 = 0;
+	int reverseOverlapLength = 0;
+	int reverseShortCount = 0;
+	int reverseLongCount = 0;
+	double reverseWeight = 0;
+
+	ScaffoldGraphEdge* result = NULL;
+	ScaffoldGraphEdge* tempEdge = edge;
+
+	bool orientation = tempEdge->orientation;
+	bool previous;
+
+	while (tempEdge != NULL) {
+		if (tempEdge->orientation == 1) {
+			forwardCount1++;
+			forwardGapDistance1 = forwardGapDistance1 + tempEdge->gapDistance;
+			forwardShortCount = forwardShortCount + tempEdge->shortReadCount;
+			forwardLongCount = forwardLongCount + tempEdge->longReadCount;
+			forwardWeight = forwardWeight + tempEdge->weight;
+			if (tempEdge->overlapLength > forwardOverlapLength) {
+				forwardOverlapLength = tempEdge->overlapLength;
+			}
+		}
+		else {
+			reverseCount1++;
+			reverseGapDistance1 = reverseGapDistance1 + tempEdge->gapDistance;
+			reverseShortCount = reverseShortCount + tempEdge->shortReadCount;
+			reverseLongCount = reverseLongCount + tempEdge->longReadCount;
+			reverseWeight = reverseWeight + tempEdge->weight;
+			if (tempEdge->overlapLength > reverseOverlapLength) {
+				reverseOverlapLength = tempEdge->overlapLength;
+			}
+		}
+		tempEdge = tempEdge->next;
+	}
+	if (forwardCount1 > 0) {
+		forwardGapDistance1 = forwardGapDistance1 / forwardCount1;
+
+	}
+	if (reverseCount1 > 0) {
+		reverseGapDistance1 = reverseGapDistance1 / reverseCount1;
+	}
+
+
+	if (forwardCount1 > 0) {
+		ScaffoldGraphEdge* result1 = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
+		result1->index = edge->index;
+		result1->nodeIndex = edge->nodeIndex;
+		result1->gapDistance = forwardGapDistance1;
+		result1->allReadCount = forwardShortCount + forwardLongCount;
+		result1->shortReadCount = forwardShortCount;
+		result1->longReadCount = forwardLongCount;
+		result1->orientation = true;
+		result1->weight = forwardWeight;
+		result1->next = NULL;
+		result = result1;
+	}
+
+	if (reverseCount1 > 0) {
+		ScaffoldGraphEdge* result1 = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
+		result1->index = edge->index;
+		result1->nodeIndex = edge->nodeIndex;
+		result1->gapDistance = reverseGapDistance1;
+		result1->allReadCount = reverseShortCount + reverseLongCount;
+		result1->shortReadCount = reverseShortCount;
+		result1->longReadCount = reverseLongCount;
+		result1->orientation = false;
+		result1->weight = reverseWeight;
+		result1->next = NULL;
+		result = result1;
+	}
+	DeleteMergeEdge(edge);
 	return result;
 }
 
@@ -986,42 +1173,7 @@ ScaffoldGraphEdge* OptimizeEdge(ScaffoldGraphEdge* edge, ContigSetHead* contigSe
 
 
 
-int CountAverageReadCount(ScaffoldGraphHead* scaffoldGraphHead) {
-	ScaffoldGraphEdge* tempEdge = NULL;
-	ScaffoldGraphEdge* tempEdge1 = NULL;
-	int averageShortCount = 0;
-	int averageLongCount = 0;
-	int averageCount = 0;
-	int edgeCount = 0;
-
-	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
-
-		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
-			tempEdge = scaffoldGraphHead->scaffoldGraph[i].outEdge;
-			while (tempEdge != NULL) {
-				averageShortCount = tempEdge->shortReadCount + averageShortCount;
-				averageLongCount = tempEdge->longReadCount + averageLongCount;
-				averageCount = tempEdge->allReadCount + averageCount;
-				edgeCount++;
-				tempEdge = tempEdge->next;
-			}
-		}
-		if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
-			tempEdge = scaffoldGraphHead->scaffoldGraph[i].inEdge;
-			while (tempEdge != NULL) {
-				averageShortCount = tempEdge->shortReadCount + averageShortCount;
-				averageLongCount = tempEdge->longReadCount + averageLongCount;
-				averageCount = tempEdge->allReadCount + averageCount;
-				edgeCount++;
-				tempEdge = tempEdge->next;
-			}
-		}
-	}
-	return averageCount / edgeCount;
-}
-
-
-void OptimizeScaffoldGraph1(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead) {
+void OptimizeScaffoldGraph1(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, int readType) {
 
 	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
 		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
@@ -1032,16 +1184,50 @@ void OptimizeScaffoldGraph1(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead*
 			scaffoldGraphHead->scaffoldGraph[i].inEdge = OptimizeEdgeInScaffoldGraph(scaffoldGraphHead->scaffoldGraph[i].inEdge, contigSetHead, i);
 		}
 	}
-	RemoveCycleInScaffold(scaffoldGraphHead);
 
+	RemoveCycleInScaffold(scaffoldGraphHead);
 
 	ScaffoldGraphEdge* tempEdge = NULL;
 	int averageCount = 0;
 	int edgeCount = 0;
 
-	//DeleteMinEdgeWeight(scaffoldGraphHead, min);
-	//OutputScaffoldGraph(scaffoldGraphHead);
-	//cout << "------------------------------" << endl;
+	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
+		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
+			tempEdge = scaffoldGraphHead->scaffoldGraph[i].outEdge;
+			while (tempEdge != NULL) {
+				averageCount = tempEdge->allReadCount + averageCount;
+				edgeCount++;
+				tempEdge = tempEdge->next;
+			}
+		}
+		if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
+			tempEdge = scaffoldGraphHead->scaffoldGraph[i].inEdge;
+			while (tempEdge != NULL) {
+				averageCount = tempEdge->allReadCount + averageCount;
+				edgeCount++;
+				tempEdge = tempEdge->next;
+			}
+		}
+	}
+	int minReadCount = (averageCount / edgeCount) / 10;
+
+	DeleteMinEdgeWeight(scaffoldGraphHead, minReadCount);
+}
+
+
+void OptimizeScaffoldGraph(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, int readType) {
+	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
+		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
+			scaffoldGraphHead->scaffoldGraph[i].outEdge = OptimizeEdge(scaffoldGraphHead->scaffoldGraph[i].outEdge, contigSetHead, i);
+		}
+
+		if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
+			scaffoldGraphHead->scaffoldGraph[i].inEdge = OptimizeEdge(scaffoldGraphHead->scaffoldGraph[i].inEdge, contigSetHead, i);
+		}
+	}
+	
+	RemoveCycleInScaffold(scaffoldGraphHead);
+
 }
 
 
@@ -1188,38 +1374,20 @@ void DeleteMinEdgeWeight(ScaffoldGraphHead* scaffoldGraphHead, int min) {
 	ScaffoldGraphEdge* tempEdge1 = NULL;
 
 	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
-		ScaffoldGraphEdge* temp = NULL;
 		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
 			tempedge = scaffoldGraphHead->scaffoldGraph[i].outEdge;
 			while (tempedge != NULL) {
 				int nodeIndex = tempedge->nodeIndex;
 				bool orientation = tempedge->orientation;
 
-				if (tempedge->weight == 0) {
+				if (tempedge->allReadCount <= min) {
 					tempEdge1 = tempedge->next;
+					scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempedge->nodeIndex, orientation);
 					if (orientation == true) {
-						temp = scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge;
-						if (temp != NULL) {
-							if (temp->weight == 0) {
-								scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempedge->nodeIndex, orientation);
-								scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge, i, orientation);
-							}
-						}
-						else {
-							scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempedge->nodeIndex, orientation);
-						}
+						scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge, i, orientation);
 					}
-					else{
-						temp = scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge;
-						if (temp != NULL) {
-							if (temp->weight == 0) {
-								scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempedge->nodeIndex, orientation);
-								scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge, i, orientation);
-							}
-						}
-						else {
-							scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempedge->nodeIndex, orientation);
-						}
+					else {
+						scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge, i, orientation);
 					}
 					tempedge = tempEdge1;
 					continue;
@@ -1235,32 +1403,16 @@ void DeleteMinEdgeWeight(ScaffoldGraphHead* scaffoldGraphHead, int min) {
 				int nodeIndex = tempedge->nodeIndex;
 				bool orientation = tempedge->orientation;
 
-				if (tempedge->weight == 0) {
+				if (tempedge->allReadCount <= min) {
 					tempEdge1 = tempedge->next;
+					scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempedge->nodeIndex, orientation);
 					if (orientation == true) {
-						temp = scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge;
-						if (temp != NULL) {
-							if (temp->weight == 0) {
-								scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempedge->nodeIndex, orientation);
-								scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge, i, orientation);
-							}
-						}
-						else {
-							scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempedge->nodeIndex, orientation);
-						}
+						scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].outEdge, i, orientation);
 					}
 					else {
-						temp = scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge;
-						if (temp != NULL) {
-							if (temp->weight == 0) {
-								scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempedge->nodeIndex, orientation);
-								scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge, i, orientation);
-							}
-						}
-						else {
-							scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempedge->nodeIndex, orientation);
-						}
+						scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[nodeIndex].inEdge, i, orientation);
 					}
+
 					tempedge = tempEdge1;
 					continue;
 				}
@@ -1272,6 +1424,47 @@ void DeleteMinEdgeWeight(ScaffoldGraphHead* scaffoldGraphHead, int min) {
 
 }
 
+void DeleteMinEdgeWeight1(ScaffoldGraphHead* scaffoldGraphHead, int minReadCount) {
+	ScaffoldGraphEdge* tempEdge = NULL;
+	ScaffoldGraphEdge* tempEdge1 = NULL;
+
+	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
+
+		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
+			tempEdge = scaffoldGraphHead->scaffoldGraph[i].outEdge;
+			while (tempEdge != NULL) {
+				int nodeIndex = tempEdge->nodeIndex;
+				bool orientation = tempEdge->orientation;
+				double gap = tempEdge->gapDistance;
+				double weight = tempEdge->weight;
+
+				if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
+					tempEdge1 = scaffoldGraphHead->scaffoldGraph[i].inEdge;
+					while (tempEdge1 != NULL) {
+						int nodeIndex1 = tempEdge1->nodeIndex;
+						bool orientation1 = tempEdge1->orientation;
+						double gap1 = tempEdge1->gapDistance;
+						double weight1 = tempEdge1->weight;
+						if (nodeIndex1 == nodeIndex) {
+							
+							if (weight < weight1) {	
+								scaffoldGraphHead->scaffoldGraph[i].outEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].outEdge, tempEdge->nodeIndex, orientation);
+							}
+							if (weight > weight1) {	
+								scaffoldGraphHead->scaffoldGraph[i].inEdge = DeleteEdgeNode(scaffoldGraphHead->scaffoldGraph[i].inEdge, tempEdge1->nodeIndex, orientation1);
+							}
+						}
+
+						tempEdge1 = tempEdge1->next;
+					}
+					
+				}
+
+				tempEdge = tempEdge->next;
+			}
+		}
+	}
+}
 
 
 int DeleteSpecialScaffoldEdge(ScaffoldGraph* scaffoldGraph, long int index, long int index1) {
@@ -1281,166 +1474,6 @@ int DeleteSpecialScaffoldEdge(ScaffoldGraph* scaffoldGraph, long int index, long
 	scaffoldGraph[index].inEdge = DeleteEdgeNode(scaffoldGraph[index].inEdge, index1, 1);
 }
 
-void BuildGraphWithSmallIS(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, char* file) {
-	cout << "readType=1" << endl;
-	long int lineCount = 0;
-	FILE* fp;
-	if ((fp = fopen(file, "r")) == NULL) {
-		printf("%s, does not exist!", file);
-		exit(0);
-	}
-	char* p;
-	const char* split = ",";
-	int maxSize = 50000;
-	char* line = new char[maxSize];
-
-	cout << "gggg" << endl;
-	int readIndex = 0;
-	lineCount = 0;
-	while ((fgets(line, maxSize, fp)) != NULL) {
-		p = strtok(line, split);
-		int count = atoi(p);
-		if (count <= 1) {	
-			continue;
-		}
-		p = strtok(NULL, split);
-		int startContigIndex = atoi(p);
-		p = strtok(NULL, split);
-		int startPosition = atoi(p);
-		p = strtok(NULL, split);
-		int distance = atoi(p);
-		p = strtok(NULL, split);
-		bool startOrientation = atoi(p);
-		p = strtok(NULL, split);
-		int startOverlapLength = atoi(p);
-
-		int a = 2;
-		while (a <= count) {
-			p = strtok(NULL, split);
-			int endContigIndex = atoi(p);
-			p = strtok(NULL, split);
-			int endPosition = atoi(p);
-			p = strtok(NULL, split);
-			int distance1 = atoi(p);
-			p = strtok(NULL, split);
-			bool endOrientation = atoi(p);
-			p = strtok(NULL, split);
-			int endOverlapLength = atoi(p);
-
-			if (startContigIndex != -1) {
-				if (endContigIndex == -1) {
-					distance = distance + distance1 + contigSetHead->contigSet[endContigIndex].contigLength;
-				}
-				else {
-					int min = 0;
-					if (startOverlapLength > endOverlapLength) {
-						min = endOverlapLength;
-					}
-					else {
-						min = startOverlapLength;
-					}
-					InsertOutOrInEdge(scaffoldGraphHead, readIndex, startContigIndex, startOrientation, endContigIndex, endOrientation, distance, min);
-
-					distance = distance1;
-					startContigIndex = endContigIndex;
-					startOrientation = endOrientation;
-					startOverlapLength = endOverlapLength;
-					startPosition = endPosition;
-				}
-			}
-			else {
-				distance = distance1;
-				startContigIndex = endContigIndex;
-				startOrientation = endOrientation;
-				startOverlapLength = endOverlapLength;
-				startPosition = endPosition;
-			}
-			a++;
-		}
-		readIndex++;
-	}
-	fclose(fp);
-
-
-}
-
-void InsertOutOrInEdge(ScaffoldGraphHead* scaffoldGraphHead, int readIndex, int leftNodeIndex, bool leftOrientation, int rightNodeIndex, bool rightOrientation, int gapDistance, int overlapLength) {
-
-	ScaffoldGraphEdge* leftNode = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
-	leftNode->index = leftNodeIndex;
-	leftNode->nodeIndex = rightNodeIndex;
-	leftNode->gapDistance = gapDistance;
-	leftNode->overlapLength = overlapLength;
-	leftNode->allReadCount = 0;
-	leftNode->shortReadCount = 0;
-	leftNode->longReadCount = overlapLength;
-	leftNode->weight = 0;
-	leftNode->next = NULL;
-
-	ScaffoldGraphEdge* rightNode = (ScaffoldGraphEdge*)malloc(sizeof(ScaffoldGraphEdge));
-	rightNode->index = rightNodeIndex;
-	rightNode->nodeIndex = leftNodeIndex;
-	rightNode->gapDistance = gapDistance;
-	rightNode->overlapLength = overlapLength;
-	rightNode->allReadCount = 0;
-	rightNode->shortReadCount = 0;
-	rightNode->longReadCount = overlapLength;
-	rightNode->weight = 0;
-	rightNode->next = NULL;
-
-
-	if (leftOrientation != rightOrientation) {
-		leftNode->orientation = 0;
-		rightNode->orientation = 0;
-	}
-	else {
-		leftNode->orientation = 1;
-		rightNode->orientation = 1;
-	}
-
-	if (leftOrientation == true) {
-		if (scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge != NULL) {
-			leftNode->next = scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge;
-		}
-		scaffoldGraphHead->scaffoldGraph[leftNodeIndex].outEdge = leftNode;
-	}
-	else {
-		if (scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge != NULL) {
-			leftNode->next = scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge;
-		}
-		scaffoldGraphHead->scaffoldGraph[leftNodeIndex].inEdge = leftNode;
-	}
-
-	if (rightOrientation == true) {
-		if (scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge != NULL) {
-			rightNode->next = scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge;
-		}
-		scaffoldGraphHead->scaffoldGraph[rightNodeIndex].inEdge = rightNode;
-	}
-	else {
-		if (scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge != NULL) {
-			rightNode->next = scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge;
-		}
-		scaffoldGraphHead->scaffoldGraph[rightNodeIndex].outEdge = rightNode;
-	}
-
-}
-
-void OptimizeGraph(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead) {
-
-	for (int i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
-		if (scaffoldGraphHead->scaffoldGraph[i].outEdge != NULL) {
-			scaffoldGraphHead->scaffoldGraph[i].outEdge = OptimizeEdge(scaffoldGraphHead->scaffoldGraph[i].outEdge, contigSetHead, i);
-		}
-
-		if (scaffoldGraphHead->scaffoldGraph[i].inEdge != NULL) {
-			scaffoldGraphHead->scaffoldGraph[i].inEdge = OptimizeEdge(scaffoldGraphHead->scaffoldGraph[i].inEdge, contigSetHead, i);
-		}
-	}
-
-	RemoveCycleInScaffold(scaffoldGraphHead);
-
-}
 
 
 

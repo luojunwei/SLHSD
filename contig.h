@@ -59,7 +59,7 @@ typedef struct ContigSetHead {
 
 
 
-ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int readType);
+ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int insertSize);
 void outputContigSet(ContigSetHead* contigSetHead, int contigLengthThreshold);
 //void DetectRepeativeContigInSet(ContigSetHead* contigSetHead, char* bamFileName, float ratio);
 

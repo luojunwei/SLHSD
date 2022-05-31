@@ -9,13 +9,12 @@
 #include <string.h>
 #include <math.h>
 #include<vector>
-#include <algorithm>   // sort(), unique()
-#include <functional>  // less<int>()
+#include <algorithm>  
+#include <functional> 
 
 #include "aligningFromBam.h"
 
 using namespace std;
-//int insertSize = 3500;
 
 
 ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShortBamFile, char* rightShortBamFile, char* longBamFile, char* originalShortResult, char* originalLongResult, char* originalShortContig, int insertSize, int readType) {
@@ -35,7 +34,7 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 		readMapPosition[i].rightLongIndex = new long int[refLength];
 
 
-		for (int j = 0; j < refLength; j++) {
+		for (long int j = 0; j < refLength; j++) {
 			readMapPosition[i].leftShortIndex[j] = 0;
 			readMapPosition[i].rightShortIndex[j] = 0;
 			readMapPosition[i].leftLongIndex[j] = 0;
@@ -67,7 +66,6 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 
 	long int leftid = -1;
 	long int rightid = -1;
-
 
 	if (readType == 1) {
 		refLength = 0;
@@ -113,7 +111,7 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 			if (contigSetHead->contigSet[alignmentLeft.RefID].contigLength <= contigLengthIgnore || contigSetHead->contigSet[alignmentRight.RefID].contigLength <= contigLengthIgnore) {
 				continue;
 			}
-			
+
 			if (alignmentLeft.IsMapped() && alignmentRight.IsMapped() && alignmentLeft.RefID != alignmentRight.RefID && alignmentLeft.MapQuality > minScore && alignmentRight.MapQuality > minScore) {
 				fprintf(fp1, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", alignmentLeft.RefID, alignmentRight.RefID, alignmentLeft.Position, alignmentRight.Position, !alignmentLeft.IsReverseStrand(), !alignmentRight.IsReverseStrand(), alignmentLeft.Length, alignmentRight.Length, alignmentLeft.MapQuality, alignmentRight.MapQuality);
 				shortAlignCount++;
@@ -121,7 +119,7 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 		}
 	}
 	if (readType == 2) {
-		
+
 		refLength = 0;
 		while (bamReaderLeft.GetNextAlignment(alignmentLeft) && bamReaderRight.GetNextAlignment(alignmentRight)) {
 			while ((alignmentLeft.AlignmentFlag & 0x900) != 0) {
@@ -191,14 +189,14 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 			if (contigSetHead->contigSet[alignmentLeft.RefID].contigLength <= contigLengthIgnore || contigSetHead->contigSet[alignmentRight.RefID].contigLength <= contigLengthIgnore) {
 				continue;
 			}
-			
+
 			if (alignmentLeft.IsMapped() && alignmentRight.IsMapped() && alignmentLeft.RefID != alignmentRight.RefID && alignmentLeft.MapQuality > minScore && alignmentRight.MapQuality > minScore) {
 				fprintf(fp1, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", alignmentLeft.RefID, alignmentRight.RefID, alignmentLeft.Position, alignmentRight.Position, !alignmentLeft.IsReverseStrand(), !alignmentRight.IsReverseStrand(), alignmentLeft.Length, alignmentRight.Length, alignmentLeft.MapQuality, alignmentRight.MapQuality);
 				shortAlignCount++;
 			}
 		}
 	}
-	
+
 
 	fflush(fp1);
 	fclose(fp1);
@@ -252,7 +250,7 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 
 
 	i = 0;
-	if (readType == 1) {
+	if (insertSize <= 1000) {
 		contigSetHead->minAlignmentScore = 20;
 	}
 
@@ -269,6 +267,7 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 					readMapPosition[alignmentLong.RefID].rightLongCoverage++;
 				}
 
+
 			}
 		}
 
@@ -284,12 +283,10 @@ ReadMapPosition* GetReadInformation(ContigSetHead* contigSetHead, char* leftShor
 			previousReadName = readName;
 			continue;
 		}
-
 		if (previousReadName != "a" && readName != previousReadName) {
 			if (longresult->longResultCount + longresult->aligningShortContigResultCount > 1) {
 				outPutLongAlignResult(longresult, contigSetHead, fp2, fp3, readIndex, previousReadLength);
 				readIndex++;
-
 			}
 			i = 0;
 			longresult->longResultCount = 0;
@@ -401,7 +398,6 @@ bool GetAlignLongResultOneLine(LongResultHead* longResultHead, BamAlignment alig
 	if (longResultHead->longResult[index].overlapLength < contigSetHead->minOverlapLength) {
 		return false;
 	}
-
 
 	clipSizes.clear();
 	readPositions.clear();
@@ -598,6 +594,7 @@ AligningResultHead* GetAligningResultHead(ContigSetHead* contigSetHead, char* fi
 
 	fclose(fp);
 	qsort(aligningResultHead->aligningResult, aligningResultHead->aligningResultCount, sizeof(aligningResultHead->aligningResult[0]), cmp);
+
 	long int start = 0;
 	long int end = -1;
 	long int leftContigIndex = -1;
@@ -644,6 +641,7 @@ AligningResultHead* GetAligningResultHead(ContigSetHead* contigSetHead, char* fi
 		}
 	}
 	aligningResultHead->aligningResultCount = aligningResultHead->aligningResultCount - count;
+
 
 	OptimaizeShortAlignResult(aligningResultHead);
 
@@ -962,12 +960,12 @@ void OptimizeLongRead(ContigSetHead* contigSetHead, char* originalfile, char* li
 			if (token == false) {
 				if (aligningSingle[(count - 1) * 7 + 3] == -1) {
 					gapDistance = 0;
-					fprintf(file, "%d,%d,%d,%d,%d,", aligningSingle[i * 7], aligningSingle[i * 7 + 1], gapDistance, aligningSingle[i * 7 + 6], aligningSingle[i * 7 + 5]);
+					fprintf(file, "%d,%d,%d,%d,%d,", aligningSingle[i * 7], aligningSingle[i * 7 + 3], gapDistance, aligningSingle[i * 7 + 6], aligningSingle[i * 7 + 5]);//index  contigStartPosition  gap  ori  overlap
 					break;
 				}
 			}
 
-			fprintf(file, "%d,%d,%d,%d,%d,", aligningSingle[i * 7], aligningSingle[i * 7 + 1], gapDistance, aligningSingle[i * 7 + 6], aligningSingle[i * 7 + 5]);
+			fprintf(file, "%d,%d,%d,%d,%d,", aligningSingle[i * 7], aligningSingle[i * 7 + 3], gapDistance, aligningSingle[i * 7 + 6], aligningSingle[i * 7 + 5]);
 			gapDistance = 0;
 		}
 		fprintf(file, "\n");
@@ -1222,7 +1220,7 @@ SimpleResultHead* OptimaizeLongAlign(ContigSetHead* contigSetHead, char* optimiz
 	while ((fgets(line, maxSize, fp)) != NULL) {
 		p = strtok(line, split);
 		int count = atoi(p);
-		if (count <= 1) {
+		if (count <= 1) {	
 			continue;
 		}
 		p = strtok(NULL, split);
@@ -1418,6 +1416,7 @@ void OptimaizeLongAlignResult(ContigSetHead* contigSetHead, char* optimizeLongRe
 int cmpl(const void* arg1, const void* arg2) {
 	SimpleLongResult* a1 = (SimpleLongResult*)arg1;
 	SimpleLongResult* a2 = (SimpleLongResult*)arg2;
+	//return a1->leftContigIndex - a2->leftContigIndex;
 	if (a1->leftIndex != a2->leftIndex) {
 		return a1->leftIndex - a2->leftIndex;
 	}

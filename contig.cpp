@@ -12,7 +12,7 @@
 
 using namespace std;
 
-ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int readType) {
+ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int insertSize) {
 
 	ContigSetHead* contigSetHead = new ContigSetHead;
 	contigSetHead->contigSet = NULL;
@@ -46,7 +46,6 @@ ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int 
 	long int contigCount = 0;
 	contigCount = contigSetHead->contigCount;
 
-	//Contig* contigSet = new Contig[contigCount];
 	contigSetHead->contigSet = new Contig[contigCount];
 
 	for (long int i = 0; i < contigCount; i++) {
@@ -93,7 +92,6 @@ ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int 
 		if (contig[extendLength - 1] == '\n' || contig[extendLength - 1] == '\t' || contig[extendLength - 1] == '\r') {
 			extendLength--;
 		}
-		//cout << "extendLength1=" << extendLength << endl;
 
 		long int contigLength = 0;
 		char* tempContig = NULL;
@@ -104,10 +102,9 @@ ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int 
 
 				allocateLength = allocateLength + maxSize + 1;
 
-				strncpy(contigSetHead->contigSet[contigIndex].contig + contigLength, contig, extendLength); //+ contigLength����
+				strncpy(contigSetHead->contigSet[contigIndex].contig + contigLength, contig, extendLength); 
 				contigSetHead->contigSet[contigIndex].contig[contigLength + extendLength] = '\0';
 				contigSetHead->contigSet[contigIndex].contigLength = contigLength + extendLength;
-				//cout << "111" << contigLength << "," << extendLength << endl;
 
 			}
 			else {
@@ -130,15 +127,14 @@ ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int 
 	fflush(fp);
 	fclose(fp);
 
-	if (readType == 1) {
-		contigLengthThreshold = 2000;
+	if (insertSize < 1000) {
+		contigLengthThreshold = 1500;
 	}
-	else if(readType == 2) {
+	else {
 		contigLengthThreshold = 1000;
 	}
 	int num = 0;
 	for (long int i = 0; i < contigSetHead->contigCount; i++) {
-		//contigSetHead->visited[i] = false;
 		if (contigSetHead->contigSet[i].contigLength < contigLengthThreshold) {
 			contigSetHead->contigSet[i].shortContig = true;
 			num++;
@@ -158,9 +154,9 @@ ContigSetHead* GetContigSet(char* contigSetFile, int contigLengthThreshold, int 
 }
 
 
-void outputContigSet(ContigSetHead* contigSetHead, int contigLengthThreshold) {		//contigLengthThreshold=1000
+void outputContigSet(ContigSetHead* contigSetHead, int contigLengthThreshold) {		
 	char* file = (char*)malloc(sizeof(char) * 50);
-	strcpy(file, "./SLR-OUTPut-Directory/contigSetforAll.fa");
+	strcpy(file, "./SLHSD-OUTPut-Directory/contigSetforAll.fa");
 	FILE* fp;
 	if ((fp = fopen(file, "w")) == NULL) {
 		cout << file << "does not exist!" << endl;

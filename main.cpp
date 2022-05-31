@@ -32,7 +32,6 @@ int main(int argc, char** argv) {
 	int contigLengthIgnore = 0;
 	int minOverlapLength = 100;
 	int overlapContigCount = 2;
-	int weightType = 1;
 	int readType = 1;
 	int insertSize = 0;
 	int readLength = 0;
@@ -77,13 +76,14 @@ int main(int argc, char** argv) {
 
 	int fileNameLen = strlen(resultOutPutDirectory);
 
-	ContigSetHead* contigSetHead = GetContigSet(contigSetFile, contigLengthIgnore, readType);
-	contigSetHead->contigLengthIgnore = contigLengthIgnore;	//1000
-	contigSetHead->minAlignmentScore = minAlignmentScore;	//30
-	contigSetHead->minOverlapLength = minOverlapLength;		//100
-	contigSetHead->overlapContigCount = overlapContigCount;	//2
-	contigSetHead->minAlignmentRevised = minAlignmentRevised;//150
-	int contigCount = contigSetHead->contigCount;
+	ContigSetHead* contigSetHead = GetContigSet(contigSetFile, contigLengthIgnore, insertSize);
+	contigSetHead->contigLengthIgnore = contigLengthIgnore;	
+	contigSetHead->minAlignmentScore = minAlignmentScore;	
+	contigSetHead->minOverlapLength = minOverlapLength;		
+	contigSetHead->overlapContigCount = overlapContigCount;	
+	contigSetHead->minAlignmentRevised = minAlignmentRevised;
+	long int contigCount = contigSetHead->contigCount;
+
 
 	char* file1 = NULL;
 	if (file1 == NULL) {
@@ -127,10 +127,9 @@ int main(int argc, char** argv) {
 		printf("%s, does not exist!", file6);
 		exit(0);
 	}
-
 	
 	ReadMapPosition* readMapPosition = GetReadInformation(contigSetHead, leftShortBamFile, rightShortBamFile, longBamFile, file1, file2, file4, insertSize, readType);
-	 
+	
 	OptimizeLongRead(contigSetHead, file2, line, maxSize, fp5);
 
 	OptimizeLongRead(contigSetHead, file4, line, maxSize, fp6);
@@ -140,7 +139,6 @@ int main(int argc, char** argv) {
 	fclose(fp5);
 	fclose(fp6);
 	
-
 	char* file3 = (char*)malloc(sizeof(char) * 50);
 	strcpy(file3, resultOutPutDirectory);
 	strcat(file3, "/shortReadAlignResult.fa");
@@ -150,7 +148,6 @@ int main(int argc, char** argv) {
 	SimpleResultHead* simpleResultHead = OptimaizeLongAlign(contigSetHead, file5);
 	
 
-
 	ScaffoldGraphHead* scaffoldGraphHead = (ScaffoldGraphHead*)malloc(sizeof(ScaffoldGraphHead));
 	scaffoldGraphHead->scaffoldGraph = (ScaffoldGraph*)malloc(sizeof(ScaffoldGraph) * contigCount);
 	scaffoldGraphHead->scaffoldGraphNodeCount = contigCount;
@@ -158,23 +155,32 @@ int main(int argc, char** argv) {
 		scaffoldGraphHead->scaffoldGraph[i].outEdge = NULL;
 		scaffoldGraphHead->scaffoldGraph[i].inEdge = NULL;
 	}
+	LocalScaffoldSetHead* localScaffoldSetHead = NULL;
 
-	if (readType == 1) {
-		BuildGraphWithSmallIS(scaffoldGraphHead, contigSetHead, aligningResultHead, simpleResultHead, readMapPosition, readType, insertSize, file5);
-		OptimizeGraph(scaffoldGraphHead, contigSetHead);
-	}
-	else if (readType == 2) {
-		GetScaffoldGraphHeadFromAlignResult(scaffoldGraphHead, contigSetHead, aligningResultHead, simpleResultHead, readMapPosition, readType, insertSize);
-		OptimizeScaffoldGraph1(scaffoldGraphHead, contigSetHead);
+	switch (readType)
+	{
+	case 1:
+		BuildGraphWithSmallIS(scaffoldGraphHead, contigSetHead, aligningResultHead, simpleResultHead, readMapPosition, readType, insertSize, localScaffoldSetHead, file5);
+		OptimizeScaffoldGraph1(scaffoldGraphHead, contigSetHead, readType);
+
+		break;
+	case 2:
+		GetScaffoldGraphHeadFromAlignResult(scaffoldGraphHead, contigSetHead, aligningResultHead, simpleResultHead, readMapPosition, readType, insertSize, localScaffoldSetHead);
+		OptimizeScaffoldGraph(scaffoldGraphHead, contigSetHead, readType);
+
+		break;
+	default:
+		cout << "please enter the read type in '1'(paired-end) or '2'(mate-pair)";
+		break;
 	}
 
-	ScaffoldSetHead* scaffoldSetHead = GetScaffoldSet(scaffoldGraphHead, contigSetHead, simpleResultHead, line, maxSize, file6, readType);
+
+	ScaffoldSetHead* scaffoldSetHead = GetScaffoldSet(scaffoldGraphHead, contigSetHead, simpleResultHead, line, maxSize, file6, insertSize);
 
 	char* scaffoldTagFileName = (char*)malloc(sizeof(char) * fileNameLen + 50);
 	strcpy(scaffoldTagFileName, resultOutPutDirectory);
 	strcat(scaffoldTagFileName, "/scaffold");
 	OutputScaffoldSet(scaffoldSetHead->scaffoldSet, contigSetHead, scaffoldTagFileName);
-
 
 }
 

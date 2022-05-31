@@ -227,7 +227,8 @@ long int DetermineOrientationOfContigs(ScaffoldGraph* scaffoldGraph, long int co
 	set_scaling(lp, 128);
 
 
-	ret = solve(lp);	//’‚¿Ô
+
+	ret = solve(lp);	
 
 	if (!(ret == 0 || ret == 1)) {
 		cout << "ee:" << ret << endl;
@@ -885,7 +886,7 @@ void InsertContigToSequence(ContigSetHead* contigSetHead, ScaffoldSetHead* scaff
 	long int lineCount = 0;
 	FILE* fp;
 	if ((fp = fopen(file, "r")) == NULL) {
-		printf("%s, does not exist!", file);	
+		printf("%s, does not exist!", file);	//file «shortContigOptimizePathInLongRead
 		exit(0);
 	}
 	char* p;
@@ -894,6 +895,7 @@ void InsertContigToSequence(ContigSetHead* contigSetHead, ScaffoldSetHead* scaff
 		lineCount++;
 	}
 	fclose(fp);
+
 
 	ScaffoldSet* tempScaffoldSet = scaffoldSetHead->scaffoldSet;
 	int i = 0;
@@ -927,7 +929,7 @@ void InsertContigToSequence(ContigSetHead* contigSetHead, ScaffoldSetHead* scaff
 }
 
 
-ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, SimpleResultHead* simpleResultHead, char* line, int maxSize, char* file, int readType) {
+ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, SimpleResultHead* simpleResultHead, char* line, int maxSize, char* file, int insertSize) {
 	bool* contigOrientation = (bool*)malloc(sizeof(bool) * scaffoldGraphHead->scaffoldGraphNodeCount);
 	long int* contigPosition = (long int*)malloc(sizeof(long int) * scaffoldGraphHead->scaffoldGraphNodeCount);
 	long int allContigLength = contigSetHead->allContigLength;
@@ -935,7 +937,7 @@ ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetH
 	DetermineOrientationOfContigs(scaffoldGraphHead->scaffoldGraph, scaffoldGraphHead->scaffoldGraphNodeCount, contigOrientation);
 
 	IterativeDetermineOrderOfContigs(contigSetHead, scaffoldGraphHead->scaffoldGraph, scaffoldGraphHead->scaffoldGraphNodeCount, contigOrientation, contigPosition, allContigLength);
-
+	
 	ScaffoldGraphEdge* tempEdge = NULL;
 	ScaffoldGraphEdge* temp = NULL;
 	ScaffoldGraphEdge* t = NULL;
@@ -1094,17 +1096,10 @@ ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetH
 	ScaffoldSetHead* scaffoldSetHead = (ScaffoldSetHead*)malloc(sizeof(ScaffoldSetHead));
 	scaffoldSetHead->scaffoldSet = NULL;
 	bool orientation = true;
-	int a = 0;
-	if (readType == 1) {
-		a = 2000;
-	}
-	else if (readType == 2) {
-		a = 1000;
-	}
 
 	for (long int p = 0; p < scaffoldGraphHead->scaffoldGraphNodeCount; p++) {
 		i = sortNode[p];
-		if (printIndex[i] == true || contigSetHead->contigSet[i].contigLength < a || (scaffoldGraphHead->scaffoldGraph[i].outEdge == NULL && scaffoldGraphHead->scaffoldGraph[i].inEdge == NULL)) {
+		if (printIndex[i] == true || contigSetHead->contigSet[i].contigLength < 1500 || (scaffoldGraphHead->scaffoldGraph[i].outEdge == NULL && scaffoldGraphHead->scaffoldGraph[i].inEdge == NULL)) {
 			continue;
 		}
 		ScaffoldGraphEdge* temp = scaffoldGraphHead->scaffoldGraph[i].outEdge;
@@ -1194,16 +1189,21 @@ ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetH
 			tempContigSequence1->next = scaffoldSetHead->scaffoldSet->contigSequence;
 			scaffoldSetHead->scaffoldSet->contigSequence = tempContigSequence1;
 			scaffoldSetHead->scaffoldSet->contigSequence->orientation = orientation;
+
 		}
 	}
 
 	OptimizeScaffoldSetCongtigSequence(scaffoldSetHead->scaffoldSet, contigSetHead->contigCount);
 
 
-	if (readType == 1) {
+	if (insertSize < 1000) {
 		InsertContigToSequence(contigSetHead, scaffoldSetHead, printIndex, file, line, maxSize);
+
+		OptimizeScaffoldSetCongtigSequence(scaffoldSetHead->scaffoldSet, contigSetHead->contigCount);
+
 	}
-	
+
+
 	for (i = 0; i < scaffoldGraphHead->scaffoldGraphNodeCount; i++) {
 		if (printIndex[i] != 1) {
 			ScaffoldSet* tempScaffoldSet = (ScaffoldSet*)malloc(sizeof(ScaffoldSet));

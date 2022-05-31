@@ -22,6 +22,14 @@
 using namespace BamTools;
 using namespace std;
 
+//typedef struct EdgeInfo {
+//	bool leftOritation;
+//	bool rightOritation;
+//	long int leftPosition;
+//	long int rightPosition;
+//
+//}EdgeInfo;
+
 
 typedef struct ScaffoldGraphEdge {
 	int index;
@@ -51,6 +59,7 @@ typedef struct ScaffoldGraphEdge {
 		overlapLength = 0;
 		next = NULL;
 		visited = false;
+		//flag = 0;
 		ori = NULL;
 	}
 }ScaffoldGraphEdge;
@@ -88,33 +97,33 @@ typedef struct LocalScaffoldSetHead {
 }LocalScaffoldSetHead;
 
 
-ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize);
+ScaffoldGraphHead* GetScaffoldGraphHeadFromAlignResult(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, LocalScaffoldSetHead* localScaffoldSetHead);
 void InsertEdge(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, int index, long int leftNodeIndex, long int rightNodeIndex, long int gapDistance, int overlapLength, int shortCount, int longCount, ReadMapPosition* readMapPosition, double w);
 
 double GetEdgeWeight(ContigSetHead* contigSetHead, long int leftNodeIndex, long int rightNodeIndex, int shortOriIndex, int longOriIndex, int shortCount, int longCount, ReadMapPosition* readMapPosition, long int gapDistance, int readType, int insertSize);
 
+
 int cmplocal(const void* arg1, const void* arg2);
 LocalScaffoldSetHead* mixShortAndLong(ContigSetHead* contigSetHead, SimpleLongResult* simpleLongResult, AligningResult* aligningResult, long int shortLen, long int longLen);
-
-void BuildGraphWithSmallIS(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, char* file);
-void InsertOutOrInEdge(ScaffoldGraphHead* scaffoldGraphHead, int readIndex, int leftNodeIndex, bool leftOrientation, int rightNodeIndex, bool rightOrientation, int gapDistance, int overlapLength);
-
+ScaffoldGraphEdge* OptimizeEdge(ScaffoldGraphEdge* edge, ContigSetHead* contigSetHead, int nodeIndex);
+ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int contigLength0);
 void DeleteMergeEdge(ScaffoldGraphEdge* edge);
 ScaffoldGraphEdge* MergeMultipleEdges(ScaffoldGraphEdge* edge, int contigLength, int contigLength0);
 ScaffoldGraphEdge* OptimizeEdgeInScaffoldGraph(ScaffoldGraphEdge* edge, ContigSetHead* contigSetHead, int nodeIndex);
-void OptimizeScaffoldGraph1(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead);
-
+void OptimizeScaffoldGraph1(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, int readType);
+void OptimizeScaffoldGraph(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, int readType);
 
 ScaffoldGraphEdge* DeleteEdgeNode(ScaffoldGraphEdge* edge, int nodeIndex, bool orientation);
 void DeleteMinEdgeWeight(ScaffoldGraphHead* scaffoldGraphHead, int min);
 int CountAverageReadCount(ScaffoldGraphHead* scaffoldGraphHead);
 int DeleteSpecialScaffoldEdge(ScaffoldGraph* scaffoldGraph, long int index, long int index1);
 void RemoveCycleInScaffold(ScaffoldGraphHead* scaffoldGraphHead);
+void DeleteMinEdgeWeight1(ScaffoldGraphHead* scaffoldGraphHead, int minReadCount);
 void OutputScaffoldGraph(ScaffoldGraphHead* scaffoldGraphHead);
 void OutputScaffold(ScaffoldGraph* scaffoldGraph, int nodeCount);
-void OptimizeGraph(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead);
-ScaffoldGraphEdge* OptimizeEdge(ScaffoldGraphEdge* edge, ContigSetHead* contigSetHead, int nodeIndex);
-ScaffoldGraphEdge* MergeEdges(ScaffoldGraphEdge* edge, int contigLength, int contigLength0);
 
+void InsertOutOrInEdge(ScaffoldGraphHead* scaffoldGraphHead, int readIndex, int leftNodeIndex, bool leftOrientation, int rightNodeIndex, bool rightOrientation, int gapDistance, int overlapLength);
+void BuildGraphWithSmallIS(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, LocalScaffoldSetHead* localScaffoldSetHead, char* file);
 
+ScaffoldGraphHead* BuildGraph(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, AligningResultHead* aligningResultHead, SimpleResultHead* simpleResultHead, ReadMapPosition* readMapPosition, int readType, int insertSize, LocalScaffoldSetHead* localScaffoldSetHead, char* file);
 #endif

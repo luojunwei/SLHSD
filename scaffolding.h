@@ -42,7 +42,7 @@ typedef struct ScaffoldSetHead {
 long int DetermineOrientationOfContigs(ScaffoldGraph* scaffoldGraph, long int contigCount, bool* contigOrientation);
 long int* IterativeDetermineOrderOfContigs(ContigSetHead* contigSetHead, ScaffoldGraph* scaffoldGraph, long int contigCount, bool* contigOrientation, long int* contigPosition, long int allContigLength);
 
-ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, SimpleResultHead* simpleResultHead, char* line, int maxSize, char* file, int readType);
+ScaffoldSetHead* GetScaffoldSet(ScaffoldGraphHead* scaffoldGraphHead, ContigSetHead* contigSetHead, SimpleResultHead* simpleResultHead, char* line, int maxSize, char* file, int insertSize);
 
 void SortNode(int* sortNode, int* length, long int left, long int right);
 ScaffoldGraphEdge* GetOptimizeNodeIndex(ScaffoldGraphHead* scaffoldGraphHead, int nodeIndex, bool orientation, ContigSequence* tempContigSequence, bool right, bool* printIndex);
